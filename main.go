@@ -109,7 +109,7 @@ func setupEnv() {
 func main() {
 	setupEnv()
 
-	userQueue = model.NewUserQueue()
+	userQueue = model.NewUserQueueInmemory()
 	kernel = matching.NewFifo(matching.KernelConfig{
 		MatchSize: matchSize,
 	})

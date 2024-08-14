@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -13,23 +14,42 @@ type QueuedUser struct {
 }
 
 type UserQueue interface {
-	AddUser(context.Context, QueuedUser)
-	GetUsers(context.Context) []QueuedUser
+	Add(context.Context, QueuedUser) error
+	GetAll(context.Context) ([]*QueuedUser, error)
+	Remove(context.Context, []string) error
 }
 
 func NewUserQueue() UserQueue {
-	return &inmemoryUserQueue{}
+	return &inmemoryUserQueue{
+		users: make(map[string]*QueuedUser),
+	}
 }
 
 type inmemoryUserQueue struct {
-	// todo: better storage primitive?
-	users []QueuedUser
+	users map[string]*QueuedUser
 }
 
-func (m *inmemoryUserQueue) AddUser(_ context.Context, user QueuedUser) {
-	m.users = append(m.users, user)
+func (m *inmemoryUserQueue) Add(_ context.Context, user QueuedUser) error {
+	if _, ok := m.users[user.Name]; ok {
+		return fmt.Errorf("user_queue: user already exists")
+	}
+	m.users[user.Name] = &user
+	return nil
 }
 
-func (m *inmemoryUserQueue) GetUsers(context.Context) []QueuedUser {
-	return m.users
+func (m *inmemoryUserQueue) GetAll(context.Context) ([]*QueuedUser, error) {
+	slice := make([]*QueuedUser, len(m.users))
+	i := 0
+	for _, user := range m.users {
+		slice[i] = user
+		i++
+	}
+	return slice, nil
+}
+
+func (m *inmemoryUserQueue) Remove(_ context.Context, keys []string) error {
+	for _, key := range keys {
+		delete(m.users, key)
+	}
+	return nil
 }

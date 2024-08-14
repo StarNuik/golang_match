@@ -54,6 +54,7 @@ func testUserQueue(t *testing.T, queue model.UserQueue) {
 	}
 	haveAll, err := queue.GetAll(ctx)
 	require.Nil(err)
+	require.Equal(2, len(haveAll))
 	require.True(slices.ContainsFunc(haveAll, containsFunc(u1)))
 	require.True(slices.ContainsFunc(haveAll, containsFunc(u2)))
 
@@ -63,6 +64,7 @@ func testUserQueue(t *testing.T, queue model.UserQueue) {
 
 	haveAll, err = queue.GetAll(ctx)
 	require.Nil(err)
+	require.Equal(1, len(haveAll))
 	require.True(*haveAll[0] == u1)
 
 	err = queue.Add(ctx, u2)

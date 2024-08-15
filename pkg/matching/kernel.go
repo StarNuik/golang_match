@@ -36,9 +36,6 @@ func fillResponse(match []*model.QueuedUser) schema.MatchResponse {
 	finalizeAverage(&resp.Skill, len(match))
 	finalizeAverage(&resp.Latency, len(match))
 	finalizeAverage(&resp.WaitSeconds, len(match))
-	finalizeSd(&resp.Skill, len(match))
-	finalizeSd(&resp.Latency, len(match))
-	finalizeSd(&resp.WaitSeconds, len(match))
 
 	return resp
 }
@@ -47,16 +44,8 @@ func subfillCandle(c *schema.Candle, in float64) {
 	c.Min = min(in, c.Min)
 	c.Max = max(in, c.Max)
 	c.Average += in
-	c.Mean += in
-	c.Deviation += in * in
 }
 
 func finalizeAverage(c *schema.Candle, len int) {
 	c.Average = c.Average / float64(len)
-}
-
-// https://stackoverflow.com/a/1175084
-func finalizeSd(c *schema.Candle, len int) {
-	c.Mean = c.Mean / float64(len)
-	c.Deviation = math.Sqrt(c.Deviation/float64(len) - c.Mean*c.Mean)
 }

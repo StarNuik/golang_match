@@ -11,7 +11,7 @@ import (
 
 func rangeOver(call func(userSize int, matchSize int)) {
 	matchSizes := []int{4, 8, 16}
-	userSizes := []int{100, 1_000 /* 10_000, 100_000 */}
+	userSizes := []int{100, 1_000, 10_000 /* 100_000, */}
 
 	for _, uSize := range userSizes {
 		for _, mSize := range matchSizes {
@@ -20,12 +20,27 @@ func rangeOver(call func(userSize int, matchSize int)) {
 	}
 }
 
-func dataset(size int) []*model.QueuedUser {
-	slice := make([]*model.QueuedUser, size)
-	for idx := range slice {
-		slice[idx] = randomUser()
+type dataset struct {
+	slice []*model.QueuedUser
+	dict  map[string]*model.QueuedUser
+}
+
+func newDataset(size int) dataset {
+	out := dataset{
+		dict:  make(map[string]*model.QueuedUser, size),
+		slice: make([]*model.QueuedUser, 0, size),
 	}
-	return slice
+
+	for range size {
+		newUser := randomUser()
+		if _, ok := out.dict[newUser.Name]; ok {
+			continue
+		}
+		out.dict[newUser.Name] = newUser
+		out.slice = append(out.slice, newUser)
+	}
+
+	return out
 }
 
 func randomUser() *model.QueuedUser {

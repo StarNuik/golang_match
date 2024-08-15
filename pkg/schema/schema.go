@@ -7,11 +7,9 @@ type QueueUserRequest struct {
 }
 
 type Candle struct {
-	Min       float64
-	Average   float64
-	Max       float64
-	Mean      float64
-	Deviation float64
+	Min     float64
+	Average float64
+	Max     float64
 }
 
 type MatchResponse struct {

@@ -29,4 +29,10 @@ c) ceil the values using smth like 1/x, so that theres still SOME difference bet
 also, if normalization is done during the insert stage, it will be annoying to support the db during a ceil transfer, as every entry will have to be updated
 therefore, normalization should definetely happen DURING matching and not before/after
 
-my idea for queuedat: increase its weight in the distance function as time passes
+my idea for queuedAt: increase its weight in the distance function as time passes
+
+ok, idk why i didnt go with the grid space partitioning / bin algo:
+its much simpler
+its much faster AND memory efficient
+it can be stored in the db (although, a db purge will be required if some grid parameters change)
+and, an important note, it is easier to reason about in the temporal space: add stuff to bins, periodically check bins, if a user is waiting too long look into nearby bins, 

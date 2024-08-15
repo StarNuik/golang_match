@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"math"
 
 	"github.com/starnuik/golang_match/pkg/schema"
@@ -30,7 +31,13 @@ func (m *inmemoryUserQueue) Add(_ context.Context, user *QueuedUser) error {
 		m.bins[idx] = make(map[string]*QueuedUser)
 	}
 
-	m.bins[idx][user.Name] = user
+	bin := m.bins[idx]
+
+	if _, exists := bin[user.Name]; exists {
+		return fmt.Errorf("user already exists")
+	}
+
+	bin[user.Name] = user
 	return nil
 }
 
@@ -40,6 +47,10 @@ func (m *inmemoryUserQueue) GetBin(_ context.Context, idx BinIdx) ([]*QueuedUser
 	}
 
 	bin := m.bins[idx]
+
+	if len(bin) == 0 {
+		return nil, nil
+	}
 
 	slice := make([]*QueuedUser, 0, len(bin))
 	for _, user := range bin {

@@ -21,7 +21,6 @@ var (
 	userQueue        model.UserQueue
 	kernel           *matching.Kernel
 	matchingTickRate time.Duration
-	matchSize        int
 )
 
 func errStatus(ctx *gin.Context, status int, err error) {
@@ -60,7 +59,7 @@ func matchUsers() {
 
 	fmt.Printf("%d users queued\n", count)
 
-	matches, err := kernel.Match(userQueue)
+	matches, err := kernel.Match(context.TODO(), userQueue)
 	if err != nil {
 		log.Println(err)
 		return
@@ -98,11 +97,11 @@ func matchUsersLoop() {
 	}
 }
 
-func setupEnv() model.GridConfig {
+func setupEnv() (model.GridConfig, matching.KernelConfig) {
 	tickSeconds := atoiEnv("TICK_SECONDS")
 	matchingTickRate = time.Duration(tickSeconds) * time.Second
 
-	matchSize = atoiEnv("GROUP_SIZE")
+	matchSize := atoiEnv("MATCH_SIZE")
 	skillCeil := atoiEnv("TUNING_SKILL_CEIL")
 	latencyCeil := atoiEnv("TUNING_LATENCY_CEIL")
 	gridSide := atoiEnv("TUNING_GRID_SIDE")
@@ -110,10 +109,13 @@ func setupEnv() model.GridConfig {
 		log.Panicln("TUNING_GRID_SIDE <= 0")
 	}
 	return model.GridConfig{
-		SkillCeil:   float64(skillCeil),
-		LatencyCeil: float64(latencyCeil),
-		Side:        uint(gridSide),
-	}
+			SkillCeil:   float64(skillCeil),
+			LatencyCeil: float64(latencyCeil),
+			Side:        gridSide,
+		}, matching.KernelConfig{
+			MatchSize: matchSize,
+			GridSide:  gridSide,
+		}
 }
 
 func atoiEnv(key string) int {
@@ -125,12 +127,10 @@ func atoiEnv(key string) int {
 }
 
 func main() {
-	setupEnv()
+	gridCfg, kernelCfg := setupEnv()
 
-	userQueue = model.NewUserQueueInmemory()
-	kernel = matching.NewFifo(matching.KernelConfig{
-		MatchSize: matchSize,
-	})
+	userQueue = model.NewUserQueueInmemory(gridCfg)
+	kernel = matching.NewKernel(kernelCfg)
 
 	r := gin.Default()
 

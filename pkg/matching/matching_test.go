@@ -2,23 +2,11 @@ package matching_test
 
 import (
 	"encoding/hex"
-	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/starnuik/golang_match/pkg/model"
 )
-
-func rangeOver(call func(userSize int, matchSize int)) {
-	matchSizes := []int{4, 8, 16}
-	userSizes := []int{100, 1_000, 10_000 /* 100_000, */}
-
-	for _, uSize := range userSizes {
-		for _, mSize := range matchSizes {
-			call(uSize, mSize)
-		}
-	}
-}
 
 type dataset struct {
 	slice []*model.QueuedUser
@@ -33,9 +21,6 @@ func newDataset(size int) dataset {
 
 	for range size {
 		newUser := randomUser()
-		if _, ok := out.dict[newUser.Name]; ok {
-			continue
-		}
 		out.dict[newUser.Name] = newUser
 		out.slice = append(out.slice, newUser)
 	}
@@ -55,8 +40,4 @@ func randomUser() *model.QueuedUser {
 		QueuedAt: time.Now().UTC(),
 	}
 	return &out
-}
-
-func label(kernelName string, mSize int, uSize int) string {
-	return fmt.Sprintf("%s_matchSize(%3d)_userbase(%6d)", kernelName, mSize, uSize)
 }

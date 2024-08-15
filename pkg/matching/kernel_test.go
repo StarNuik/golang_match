@@ -1,75 +1,50 @@
 package matching_test
 
 import (
-	"fmt"
-	"math"
+	"testing"
 
-	"github.com/starnuik/golang_match/pkg/model"
-	"github.com/starnuik/golang_match/pkg/schema"
+	"github.com/starnuik/golang_match/pkg/matching"
+	"github.com/stretchr/testify/require"
 )
 
-// func TestDbscanVariance(t *testing.T) {
-// 	variance("dbscan", func(cfg matching.KernelConfig) matching.Kernel {
-// 		return matching.NewDbscan(cfg)
-// 	})
-// }
-
-// func TestFifoVariance(t *testing.T) {
-// 	variance("fifo", func(cfg matching.KernelConfig) matching.Kernel {
-// 		return matching.NewFifo(cfg)
-// 	})
-// }
-
-// func variance(kernelName string, factory func(matching.KernelConfig) matching.Kernel) {
-// 	sampleSize := 100
-
-// 	rangeOver(func(userSize, matchSize int) {
-// 		kernel := factory(matching.KernelConfig{
-// 			MatchSize: matchSize,
-// 		})
-// 		dataset := dataset(userSize)
-// 		stats := onlineVariance{}
-
-// 		for range sampleSize {
-// 			matches := kernel.Match(dataset)
-// 			stats.Push(dataset, matches, matchSize)
-// 		}
-
-// 		fmt.Printf("variance/%s: %s\n", label(kernelName, matchSize, userSize), stats.Stat())
-// 	})
-// }
-
-type onlineVariance struct {
-	sumSkillSd   float64
-	sumLatencySd float64
-	n            int
+func TestDbscanBasic(t *testing.T) {
+	basicTests(t, func(cfg matching.KernelConfig) matching.Kernel {
+		return matching.NewDbscan(cfg)
+	})
 }
 
-func (s *onlineVariance) Push(users map[string]*model.QueuedUser, matches []schema.MatchResponse, matchSize int) {
+func TestFifoBasic(t *testing.T) {
+	basicTests(t, func(cfg matching.KernelConfig) matching.Kernel {
+		return matching.NewFifo(cfg)
+	})
+}
+
+func basicTests(t *testing.T, factory func(matching.KernelConfig) matching.Kernel) {
+	require := require.New(t)
+
+	matchSize := 8
+	dataset := newDataset(10_000)
+	kernel := factory(matching.KernelConfig{
+		MatchSize: matchSize,
+	})
+	matches := kernel.Match(dataset.slice)
+	// beware: this has a non-zero probability of happening
+	require.True(len(matches) > 0)
+
+	names := make(map[string]struct{})
+	nameOverlaps := 0
 	for _, match := range matches {
-		// https://stackoverflow.com/a/1175084
-		var skillMean, latencyMean, skillSd, latencySd float64
-		for _, username := range match.Names {
-			user := users[username]
-			skillMean += user.Skill
-			skillSd += user.Skill * user.Skill
-			latencyMean += user.Latency
-			latencySd += user.Latency * user.Latency
+		require.Equal(matchSize, len(match.Names))
+
+		for _, name := range match.Names {
+			if _, exists := names[name]; exists {
+				nameOverlaps += 1
+			}
+
+			names[name] = struct{}{}
 		}
-		skillMean = skillMean / float64(matchSize)
-		skillSd = math.Sqrt(skillSd/float64(matchSize) - skillMean*skillMean)
-		latencyMean = latencyMean / float64(matchSize)
-		latencySd = math.Sqrt(latencySd/float64(matchSize) - latencyMean*latencyMean)
-
-		// https://www.statology.org/averaging-standard-deviations/
-		s.sumSkillSd += skillSd * skillSd
-		s.sumLatencySd += latencySd * latencySd
 	}
-	s.n += len(matches)
-}
+	require.Equal(0, nameOverlaps)
 
-func (s *onlineVariance) Stat() string {
-	skillSd := math.Sqrt(s.sumSkillSd / float64(s.n))
-	latencySd := math.Sqrt(s.sumLatencySd / float64(s.n))
-	return fmt.Sprintf("AvgSkillSd(%f), AvgLatencySd(%f)", skillSd, latencySd)
+	//
 }

@@ -9,12 +9,12 @@ import (
 )
 
 func NewDbscan(cfg KernelConfig) Kernel {
-	return &dbscanKernel{
+	return &DbscanKernel{
 		cfg: cfg,
 	}
 }
 
-type dbscanKernel struct {
+type DbscanKernel struct {
 	cfg KernelConfig
 }
 
@@ -33,56 +33,59 @@ func (p *userPoint) Name() string {
 	return p.user.Name
 }
 
-func (k *dbscanKernel) Match(queue []*model.QueuedUser) []schema.MatchResponse {
-	points := make([]dbscan.Point, len(queue))
-	for idx := range queue {
-		points[idx] = &userPoint{queue[idx]}
+func (k *DbscanKernel) Match(queue []*model.QueuedUser) []schema.MatchResponse {
+	points := make(map[string]dbscan.Point, len(queue))
+	for _, user := range queue {
+		point := userPoint{user: user}
+		points[user.Name] = &point
 	}
 
 	matches := []schema.MatchResponse{}
+	backing := make([]dbscan.Point, len(queue))
 	for {
-		passPoints, passMatches := k.dbscanPass(points)
+		passMatches := k.dbscanPass(points, backing)
 		if len(passMatches) == 0 {
 			break
 		}
 		matches = append(matches, passMatches...)
-		points = passPoints
 	}
 
 	return matches
 }
 
-func (k *dbscanKernel) dbscanPass(points []dbscan.Point) ([]dbscan.Point, []schema.MatchResponse) {
+func (k *DbscanKernel) dbscanPass(points map[string]dbscan.Point, backing []dbscan.Point) []schema.MatchResponse {
 	matches := []schema.MatchResponse{}
-	toPrune := make(map[string]struct{})
+
+	idx := 0
+	for _, p := range points {
+		backing[idx] = p
+		idx++
+	}
+	ptSlice := backing[:len(points)]
 
 	// todo: better epsilon
 	epsilon := 100.0
-	clusters := dbscan.Cluster(k.cfg.MatchSize, epsilon, points...)
+	clusters := dbscan.Cluster(k.cfg.MatchSize, epsilon, ptSlice...)
 
 	if len(clusters) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	for _, cluster := range clusters {
-		match := []*model.QueuedUser{}
-		for idx := range k.cfg.MatchSize {
-			user := cluster[idx].(*userPoint).user
-			match = append(match, user)
-			toPrune[user.Name] = struct{}{}
-		}
+		blockSize := k.cfg.MatchSize
+		blocks := len(cluster) / blockSize
 
-		matches = append(matches, fillResponse(match))
+		for bidx := 0; bidx < blocks; bidx++ {
+			match := []*model.QueuedUser{}
+			for idx := range blockSize {
+				point := cluster[bidx*blockSize+idx].(*userPoint)
+				match = append(match, point.user)
+				delete(points, point.user.Name)
+			}
+
+			matches = append(matches, fillResponse(match))
+		}
 	}
 
-	prunedPoints := []dbscan.Point{}
-	for _, p := range points {
-		user := p.(*userPoint).user
-		if _, ok := toPrune[user.Name]; ok {
-			continue
-		}
-		prunedPoints = append(prunedPoints, p)
-	}
-
-	return prunedPoints, matches
+	return matches
 }

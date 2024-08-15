@@ -72,20 +72,27 @@ func (k *DbscanKernel) dbscanPass(points map[string]dbscan.Point, backing []dbsc
 	}
 
 	for _, cluster := range clusters {
-		blockSize := k.cfg.MatchSize
-		blocks := len(cluster) / blockSize
-
-		for bidx := 0; bidx < blocks; bidx++ {
-			match := []*model.QueuedUser{}
-			for idx := range blockSize {
-				point := cluster[bidx*blockSize+idx].(*userPoint)
-				match = append(match, point.user)
-				delete(points, point.user.Name)
-			}
-
-			matches = append(matches, fillResponse(match))
-		}
+		matches = append(matches, clusterToRespones(points, cluster, k.cfg.MatchSize)...)
 	}
 
 	return matches
+}
+
+// this is a de-duping function, because dbscan.Cluster returns arrays that MAY repeat any point
+func clusterToRespones(points map[string]dbscan.Point, cluster []dbscan.Point, blockSize int) []schema.MatchResponse {
+	out := []schema.MatchResponse{}
+
+	match := make([]*model.QueuedUser, 0, 8)
+	for _, p := range cluster {
+		point := p.(*userPoint)
+		if _, ok := points[point.user.Name]; ok {
+			match = append(match, point.user)
+			delete(points, point.user.Name)
+		}
+		if len(match) == blockSize {
+			out = append(out, fillResponse(match))
+			match = match[:0]
+		}
+	}
+	return out
 }

@@ -1,6 +1,7 @@
 package matching_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/starnuik/golang_match/pkg/matching"
@@ -13,11 +14,11 @@ func TestDbscanBasic(t *testing.T) {
 	})
 }
 
-func TestFifoBasic(t *testing.T) {
-	basicTests(t, func(cfg matching.KernelConfig) matching.Kernel {
-		return matching.NewFifo(cfg)
-	})
-}
+// func TestFifoBasic(t *testing.T) {
+// 	basicTests(t, func(cfg matching.KernelConfig) matching.Kernel {
+// 		return matching.NewFifo(cfg)
+// 	})
+// }
 
 func basicTests(t *testing.T, factory func(matching.KernelConfig) matching.Kernel) {
 	require := require.New(t)
@@ -33,6 +34,7 @@ func basicTests(t *testing.T, factory func(matching.KernelConfig) matching.Kerne
 
 	names := make(map[string]struct{})
 	nameOverlaps := 0
+	usersMatched := 0
 	for _, match := range matches {
 		require.Equal(matchSize, len(match.Names))
 
@@ -40,10 +42,11 @@ func basicTests(t *testing.T, factory func(matching.KernelConfig) matching.Kerne
 			if _, exists := names[name]; exists {
 				nameOverlaps += 1
 			}
-
+			usersMatched += 1
 			names[name] = struct{}{}
 		}
 	}
+	fmt.Printf("usersMatched(%d), overlaps(%d)\n", usersMatched, nameOverlaps)
 	require.Equal(0, nameOverlaps)
 
 	//

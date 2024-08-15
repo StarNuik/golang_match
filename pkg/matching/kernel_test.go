@@ -9,6 +9,12 @@ import (
 	"github.com/starnuik/golang_match/pkg/schema"
 )
 
+func TestDbscanVariance(t *testing.T) {
+	variance("dbscan", func(cfg matching.KernelConfig) matching.Kernel {
+		return matching.NewDbscan(cfg)
+	})
+}
+
 func TestFifoVariance(t *testing.T) {
 	variance("fifo", func(cfg matching.KernelConfig) matching.Kernel {
 		return matching.NewFifo(cfg)

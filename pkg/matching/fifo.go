@@ -7,7 +7,7 @@ import (
 	"github.com/starnuik/golang_match/pkg/schema"
 )
 
-func NewFifo(cfg KernelConfig) *fifoKernel {
+func NewFifo(cfg KernelConfig) Kernel {
 	return &fifoKernel{
 		cfg: cfg,
 	}

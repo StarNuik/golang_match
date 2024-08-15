@@ -8,17 +8,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGridBasic(t *testing.T) {
+	basicTests(t, func(cfg matching.KernelConfig) matching.Kernel {
+		return matching.NewGrid(cfg)
+	})
+}
+
 func TestDbscanBasic(t *testing.T) {
 	basicTests(t, func(cfg matching.KernelConfig) matching.Kernel {
 		return matching.NewDbscan(cfg)
 	})
 }
 
-// func TestFifoBasic(t *testing.T) {
-// 	basicTests(t, func(cfg matching.KernelConfig) matching.Kernel {
-// 		return matching.NewFifo(cfg)
-// 	})
-// }
+func TestFifoBasic(t *testing.T) {
+	basicTests(t, func(cfg matching.KernelConfig) matching.Kernel {
+		return matching.NewFifo(cfg)
+	})
+}
 
 func basicTests(t *testing.T, factory func(matching.KernelConfig) matching.Kernel) {
 	require := require.New(t)
@@ -26,7 +32,9 @@ func basicTests(t *testing.T, factory func(matching.KernelConfig) matching.Kerne
 	matchSize := 8
 	dataset := newDataset(10_000)
 	kernel := factory(matching.KernelConfig{
-		MatchSize: matchSize,
+		MatchSize:   matchSize,
+		SkillCeil:   5000,
+		LatencyCeil: 1000,
 	})
 	matches := kernel.Match(dataset.slice)
 	// beware: this has a non-zero probability of happening

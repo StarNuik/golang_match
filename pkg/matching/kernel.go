@@ -13,7 +13,9 @@ type Kernel interface {
 }
 
 type KernelConfig struct {
-	MatchSize int
+	MatchSize   int
+	SkillCeil   float64
+	LatencyCeil float64
 }
 
 func fillResponse(match []*model.QueuedUser) schema.MatchResponse {

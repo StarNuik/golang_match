@@ -10,6 +10,12 @@ import (
 	"github.com/starnuik/golang_match/pkg/schema"
 )
 
+func BenchmarkGrid(b *testing.B) {
+	benchmark(b, "grid", func(cfg matching.KernelConfig) matching.Kernel {
+		return matching.NewGrid(cfg)
+	})
+}
+
 func BenchmarkDbscan(b *testing.B) {
 	benchmark(b, "dbscan", func(cfg matching.KernelConfig) matching.Kernel {
 		return matching.NewDbscan(cfg)
@@ -26,7 +32,9 @@ func benchmark(b *testing.B, kernelName string, factory func(matching.KernelConf
 	rangeOver(func(userSize, matchSize int) {
 		b.StopTimer()
 		kernel := factory(matching.KernelConfig{
-			MatchSize: matchSize,
+			MatchSize:   matchSize,
+			SkillCeil:   5000,
+			LatencyCeil: 5000,
 		})
 
 		stats := onlineVariance{}
@@ -66,7 +74,9 @@ func label(kernelName string, mSize int, uSize int) string {
 type onlineVariance struct {
 	sumSkillSd   float64
 	sumLatencySd float64
+	sumMatched   float64
 	n            int
+	nn           int
 }
 
 func (s *onlineVariance) Push(users map[string]*model.QueuedUser, matches []schema.MatchResponse, matchSize int) {
@@ -90,10 +100,13 @@ func (s *onlineVariance) Push(users map[string]*model.QueuedUser, matches []sche
 		s.sumLatencySd += latencySd * latencySd
 	}
 	s.n += len(matches)
+	s.sumMatched += float64(len(matches)*matchSize) / float64(len(users))
+	s.nn++
 }
 
 func (s *onlineVariance) Stat() string {
 	skillSd := math.Sqrt(s.sumSkillSd / float64(s.n))
 	latencySd := math.Sqrt(s.sumLatencySd / float64(s.n))
-	return fmt.Sprintf("AvgSkillSd(%f), AvgLatencySd(%f)", skillSd, latencySd)
+	matchRate := s.sumMatched / float64(s.nn)
+	return fmt.Sprintf("AvgSkillSd(%5.1f), AvgLatencySd(%5.1f), AvgMatchRate(%5.2f)", skillSd, latencySd, matchRate)
 }

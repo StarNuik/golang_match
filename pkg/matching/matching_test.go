@@ -35,7 +35,7 @@ func randomUser() *model.QueuedUser {
 
 	out := model.QueuedUser{
 		Name:     name,
-		Skill:    rand.NormFloat64()*500.0 + 2500.0, // mean(2500), sd(500)
+		Skill:    rand.NormFloat64()*800.0 + 2500.0, // mean(2500), sd(800)
 		Latency:  rand.NormFloat64()*250.0 + 500.0,  // mean(500), sd(250)
 		QueuedAt: time.Now().UTC(),
 	}

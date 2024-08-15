@@ -31,8 +31,18 @@ therefore, normalization should definetely happen DURING matching and not before
 
 my idea for queuedAt: increase its weight in the distance function as time passes
 
-ok, idk why i didnt go with the grid space partitioning / bin algo:
+ok, idk why (bcs it had a pre-made lib) i didnt go with the grid space partitioning / bin algo:
 its much simpler
 its much faster AND memory efficient
 it can be stored in the db (although, a db purge will be required if some grid parameters change)
 and, an important note, it is easier to reason about in the temporal space: add stuff to bins, periodically check bins, if a user is waiting too long look into nearby bins, 
+
+env vars:
+TUNING_SKILL_CEIL (5000)
+TUNING_LATENCY_CEIL (5000)
+TUNING_GRID_SIDE (25) (this yields ~50sd)
+TUNING_WAIT_TIME_1 (ie 30s)
+TUNING_WAIT_TIME_2 (ie 45s)
+
+design space:
+prioritize high / low WaitTime in a single cell ?

@@ -19,7 +19,7 @@ import (
 
 var (
 	userQueue        model.UserQueue
-	kernel           matching.Kernel
+	kernel           *matching.Kernel
 	matchingTickRate time.Duration
 	matchSize        int
 )
@@ -38,12 +38,13 @@ func queueUser(ctx *gin.Context) {
 		return
 	}
 
-	err = userQueue.Add(context.TODO(), model.QueuedUser{
-		Name:     req.Name,
-		Skill:    req.Skill,
-		Latency:  req.Latency,
-		QueuedAt: time.Now().UTC(),
-	})
+	user, err := userQueue.Parse(&req)
+	if err != nil {
+		errStatus(ctx, http.StatusBadRequest, err)
+		return
+	}
+
+	err = userQueue.Add(context.TODO(), user)
 	if err != nil {
 		errStatus(ctx, http.StatusInternalServerError, err)
 		return
@@ -51,14 +52,19 @@ func queueUser(ctx *gin.Context) {
 }
 
 func matchUsers() {
-	queue, err := userQueue.GetAll(context.TODO())
+	count, err := userQueue.Count(context.TODO())
+	if err != nil {
+		log.Println(err)
+		return // no db connection anyway
+	}
+
+	fmt.Printf("%d users queued\n", count)
+
+	matches, err := kernel.Match(userQueue)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-
-	fmt.Printf("%d users queued\n", len(queue))
-	matches := kernel.Match(queue)
 	if len(matches) == 0 {
 		return
 	}
@@ -92,18 +98,30 @@ func matchUsersLoop() {
 	}
 }
 
-func setupEnv() {
-	tickSeconds, err := strconv.Atoi(os.Getenv("TICK_SECONDS"))
-	if err != nil {
-		log.Panicln(err)
-	}
-
+func setupEnv() model.GridConfig {
+	tickSeconds := atoiEnv("TICK_SECONDS")
 	matchingTickRate = time.Duration(tickSeconds) * time.Second
 
-	matchSize, err = strconv.Atoi(os.Getenv("GROUP_SIZE"))
+	matchSize = atoiEnv("GROUP_SIZE")
+	skillCeil := atoiEnv("TUNING_SKILL_CEIL")
+	latencyCeil := atoiEnv("TUNING_LATENCY_CEIL")
+	gridSide := atoiEnv("TUNING_GRID_SIDE")
+	if gridSide <= 0 {
+		log.Panicln("TUNING_GRID_SIDE <= 0")
+	}
+	return model.GridConfig{
+		SkillCeil:   float64(skillCeil),
+		LatencyCeil: float64(latencyCeil),
+		Side:        uint(gridSide),
+	}
+}
+
+func atoiEnv(key string) int {
+	out, err := strconv.Atoi(os.Getenv(key))
 	if err != nil {
 		log.Panicln(err)
 	}
+	return out
 }
 
 func main() {

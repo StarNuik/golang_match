@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/starnuik/golang_match/pkg/matching"
 	"github.com/starnuik/golang_match/pkg/model"
 	"github.com/starnuik/golang_match/pkg/schema"
 )
@@ -18,6 +19,29 @@ func rangeOver(matchSizes []int, userSizes []int, call func(datasetSize int, mat
 		for _, mSize := range matchSizes {
 			call(uSize, mSize)
 		}
+	}
+}
+
+func rangeKernels(run func(string, func(matching.KernelConfig) matching.Kernel)) {
+	kt := []struct {
+		factory func(matching.KernelConfig) matching.Kernel
+		label   string
+	}{
+		{
+			factory: func(cfg matching.KernelConfig) matching.Kernel {
+				return matching.NewBasicKernel(cfg)
+			},
+			label: "basic_kernel",
+		},
+		{
+			factory: func(cfg matching.KernelConfig) matching.Kernel {
+				return matching.NewPriorityKernel(cfg)
+			},
+			label: "priority_kernel",
+		},
+	}
+	for _, k := range kt {
+		run(k.label, k.factory)
 	}
 }
 

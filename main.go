@@ -19,7 +19,7 @@ import (
 
 var (
 	userQueue        model.UserQueue
-	kernel           *matching.Kernel
+	kernel           matching.Kernel
 	matchingTickRate time.Duration
 )
 
@@ -97,25 +97,63 @@ func matchUsersLoop() {
 	}
 }
 
-func setupEnv() (model.GridConfig, matching.KernelConfig) {
-	tickSeconds := atoiEnv("TICK_SECONDS")
-	matchingTickRate = time.Duration(tickSeconds) * time.Second
+func setupEnv() model.GridConfig {
+	tickMs := atoiEnv("TICK_MS")
+	matchingTickRate = time.Duration(tickMs) * time.Millisecond
 
-	matchSize := atoiEnv("MATCH_SIZE")
 	skillCeil := atoiEnv("TUNING_SKILL_CEIL")
+	if skillCeil <= 0 {
+		log.Panicln("TUNING_SKILL_CEIL must be > 0")
+	}
 	latencyCeil := atoiEnv("TUNING_LATENCY_CEIL")
+	if latencyCeil <= 0 {
+		log.Panicln("TUNING_LATENCY_CEIL must be > 0")
+	}
+
 	gridSide := atoiEnv("TUNING_GRID_SIDE")
 	if gridSide <= 0 {
-		log.Panicln("TUNING_GRID_SIDE <= 0")
+		log.Panicln("TUNING_GRID_SIDE must be > 0")
 	}
+
 	return model.GridConfig{
-			SkillCeil:   float64(skillCeil),
-			LatencyCeil: float64(latencyCeil),
-			Side:        gridSide,
-		}, matching.KernelConfig{
-			MatchSize: matchSize,
-			GridSide:  gridSide,
-		}
+		SkillCeil:   float64(skillCeil),
+		LatencyCeil: float64(latencyCeil),
+		Side:        gridSide,
+	}
+}
+
+func setupMatching(gridSide int) matching.Kernel {
+	matchSize := atoiEnv("MATCH_SIZE")
+	if matchSize < 2 {
+		log.Panicln("MATCH_SIZE must be >= 2")
+	}
+
+	priorityRadius := atoiEnv("TUNING_PRIORITY_RADIUS")
+	if priorityRadius < 1 {
+		log.Panicln("TUNING_PRIORITY_RADIUS must be >= 1")
+	}
+
+	waitLimitMs := atoiEnv("TUNING_WAIT_SOFT_LIMIT_MS")
+	waitLimit := time.Duration(waitLimitMs) * time.Millisecond
+
+	kernelType := os.Getenv("MATCHING_TYPE")
+
+	cfg := matching.KernelConfig{
+		MatchSize:      matchSize,
+		GridSide:       gridSide,
+		PriorityRadius: priorityRadius,
+		WaitSoftLimit:  waitLimit,
+	}
+
+	switch kernelType {
+	case "basic":
+		return matching.NewBasicKernel(cfg)
+	case "priority":
+		return matching.NewBasicKernel(cfg)
+	default:
+		log.Panicln("MATCHING_TYPE is invalid")
+	}
+	panic("unreachable")
 }
 
 func atoiEnv(key string) int {
@@ -127,10 +165,10 @@ func atoiEnv(key string) int {
 }
 
 func main() {
-	gridCfg, kernelCfg := setupEnv()
+	gridCfg := setupEnv()
 
 	userQueue = model.NewUserQueueInmemory(gridCfg)
-	kernel = matching.NewKernel(kernelCfg)
+	kernel = setupMatching(gridCfg.Side)
 
 	r := gin.Default()
 

@@ -12,50 +12,54 @@ import (
 )
 
 func TestKernelBasic(t *testing.T) {
-	require := require.New(t)
+	rangeKernels(func(label string, factory func(matching.KernelConfig) matching.Kernel) {
+		t.Run(label, func(t *testing.T) {
+			require := require.New(t)
 
-	ctx := context.Background()
-	gridSide := 25
-	datasetSize := 10_000
-	matchSize := 8
-	gcfg := model.GridConfig{
-		SkillCeil:   5000,
-		LatencyCeil: 5000,
-		Side:        gridSide,
-	}
-	kcfg := matching.KernelConfig{
-		MatchSize: matchSize,
-		GridSide:  gridSide,
-		WaitTime1: 15 * time.Second,
-		WaitTime2: 30 * time.Second,
-	}
-
-	dataset := newDataset(gcfg, datasetSize)
-
-	kernel := matching.NewKernel(kcfg)
-	require.NotNil(kernel)
-
-	matches, err := kernel.Match(ctx, dataset.model)
-	require.Nil(err)
-	require.NotNil(matches)
-	// a joke: this condition has a non-zero probability of returning a false-negative
-	require.True(len(matches) > 0)
-
-	names := make(map[string]struct{})
-	userOverlaps := 0
-	for _, match := range matches {
-		require.Equal(matchSize, len(match.Names))
-
-		for _, name := range match.Names {
-			if _, exists := names[name]; exists {
-				userOverlaps += 1
+			ctx := context.Background()
+			gridSide := 25
+			datasetSize := 10_000
+			matchSize := 8
+			gcfg := model.GridConfig{
+				SkillCeil:   5000,
+				LatencyCeil: 5000,
+				Side:        gridSide,
 			}
-			names[name] = struct{}{}
-		}
-	}
+			kcfg := matching.KernelConfig{
+				MatchSize:      matchSize,
+				GridSide:       gridSide,
+				WaitSoftLimit:  15 * time.Second,
+				PriorityRadius: 2,
+			}
 
-	matchedCount := len(matches) * matchSize
-	fmt.Printf("from(%d), matched(%d)\n", datasetSize, matchedCount)
+			dataset := newDataset(gcfg, datasetSize)
 
-	require.Zero(userOverlaps, fmt.Sprintf("overlaps(%d)", userOverlaps))
+			kernel := factory(kcfg)
+			require.NotNil(kernel)
+
+			matches, err := kernel.Match(ctx, dataset.model)
+			require.Nil(err)
+			require.NotNil(matches)
+			// a joke: this condition has a non-zero probability of returning a false-negative
+			require.True(len(matches) > 0)
+
+			names := make(map[string]struct{})
+			userOverlaps := 0
+			for _, match := range matches {
+				require.Equal(matchSize, len(match.Names))
+
+				for _, name := range match.Names {
+					if _, exists := names[name]; exists {
+						userOverlaps += 1
+					}
+					names[name] = struct{}{}
+				}
+			}
+
+			matchedCount := len(matches) * matchSize
+			fmt.Printf("from(%d), matched(%d)\n", datasetSize, matchedCount)
+
+			require.Zero(userOverlaps, fmt.Sprintf("overlaps(%d)", userOverlaps))
+		})
+	})
 }

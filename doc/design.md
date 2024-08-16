@@ -45,4 +45,5 @@ TUNING_WAIT_TIME_1 (ie 30s)
 TUNING_WAIT_TIME_2 (ie 45s)
 
 design space:
-prioritize high / low WaitTime in a single cell ?
+prioritize high / low WaitTime in a single cell ? -- no difference found in my personal tests
+grid side - lower cell sizes make the waiting time smaller, but the skill sd higher 

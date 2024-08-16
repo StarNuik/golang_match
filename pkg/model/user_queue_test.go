@@ -18,16 +18,16 @@ var (
 		Side:        2,
 	}
 	wantUsers = []*model.QueuedUser{
-		{Skill: 2.5, Latency: 2.5, Name: "user0", QueuedAt: now().Add(-100 * time.Second)},
-		{Skill: 1.25, Latency: 2.5, Name: "user1", QueuedAt: now().Add(-200 * time.Second)},
-		{Skill: 2.5, Latency: 1.25, Name: "user2", QueuedAt: now().Add(-300 * time.Second)},
-		{Skill: 1.25, Latency: 1.25, Name: "user3", QueuedAt: now().Add(-400 * time.Second)},
-		{Skill: 7.5, Latency: 2.5, Name: "user4", QueuedAt: now().Add(-500 * time.Second)},
-		{Skill: 7.5, Latency: 2.5, Name: "user5", QueuedAt: now().Add(-600 * time.Second)},
-		{Skill: 7.5, Latency: 2.5, Name: "user6", QueuedAt: now().Add(-700 * time.Second)},
-		{Skill: 2.5, Latency: 7.5, Name: "user7", QueuedAt: now().Add(-800 * time.Second)},
-		{Skill: 2.5, Latency: 7.5, Name: "user8", QueuedAt: now().Add(-900 * time.Second)},
-		{Skill: 7.5, Latency: 7.5, Name: "user9", QueuedAt: now().Add(-1000 * time.Second)},
+		{Skill: 2.5, Latency: 2.5, Name: "user0-bin00", QueuedAt: now().Add(-100 * time.Second)},
+		{Skill: 1.25, Latency: 2.5, Name: "user1-bin00", QueuedAt: now().Add(-200 * time.Second)},
+		{Skill: 2.5, Latency: 1.25, Name: "user2-bin00", QueuedAt: now().Add(-300 * time.Second)},
+		{Skill: 1.25, Latency: 1.25, Name: "user3-bin00", QueuedAt: now().Add(-400 * time.Second)},
+		{Skill: 7.5, Latency: 2.5, Name: "user4-bin10", QueuedAt: now().Add(-500 * time.Second)},
+		{Skill: 7.5, Latency: 2.5, Name: "user5-bin10", QueuedAt: now().Add(-600 * time.Second)},
+		{Skill: 7.5, Latency: 2.5, Name: "user6-bin10", QueuedAt: now().Add(-700 * time.Second)},
+		{Skill: 2.5, Latency: 7.5, Name: "user7-bin01", QueuedAt: now().Add(-800 * time.Second)},
+		{Skill: 2.5, Latency: 7.5, Name: "user8-bin01", QueuedAt: now().Add(-900 * time.Second)},
+		{Skill: 7.5, Latency: 7.5, Name: "user9-bin11", QueuedAt: now().Add(-1000 * time.Second)},
 	}
 	ctx          = context.Background()
 	inmemFactory = func(cfg model.GridConfig) model.UserQueue {
@@ -54,6 +54,10 @@ func TestInmemUserQueueCount(t *testing.T) {
 
 func TestInmemUserQueueRemove(t *testing.T) {
 	testUserQueueRemove(t, inmemFactory)
+}
+
+func TestInmemUserQueueGetBins(t *testing.T) {
+	testUserQueueGetBins(t, inmemFactory)
 }
 
 func testUserQueueAdd(t *testing.T, factory func(model.GridConfig) model.UserQueue) {
@@ -162,75 +166,34 @@ func testUserQueueRemove(t *testing.T, factory func(model.GridConfig) model.User
 	require.Nil(bin)
 }
 
-// func testUserQueue(t *testing.T, factory func(model.GridConfig) model.UserQueue) {
-// 	require := require.New(t)
+func testUserQueueGetBins(t *testing.T, factory func(model.GridConfig) model.UserQueue) {
+	require := require.New(t)
+	users := factory(cfg)
 
-// 	cfg := model.GridConfig{
-// 		SkillCeil:   10,
-// 		LatencyCeil: 10,
-// 		Side:        2,
-// 	}
-// 	users := factory(cfg)
+	for _, user := range wantUsers {
+		err := users.Add(ctx, user)
+		require.Nil(err)
+	}
 
-// 	ctx := context.Background()
-// 	now := time.Now().UTC()
-// 	u1 := model.QueuedUser{
-// 		Name:     "user 1",
-// 		Skill:    123.4,
-// 		Latency:  567.8,
-// 		QueuedAt: now.Add(-100 * time.Second),
-// 	}
-// 	u2 := model.QueuedUser{
-// 		Name:     "user 2",
-// 		Skill:    9876.5,
-// 		Latency:  4321.0,
-// 		QueuedAt: now.Add(-200 * time.Hour),
-// 	}
+	bin, err := users.GetBins(ctx, model.BinIdx{0, 0}, model.BinIdx{1, 0}, 350*time.Second)
+	require.Nil(err)
+	require.Len(bin, 4)
+	require.True(binContains(bin, wantUsers[3]))
+	require.True(binContains(bin, wantUsers[4]))
+	require.True(binContains(bin, wantUsers[5]))
+	require.True(binContains(bin, wantUsers[6]))
 
-// 	// .Add
-// 	err := queue.Add(ctx, u1)
-// 	require.Nil(err)
-
-// 	err = queue.Add(ctx, u2)
-// 	require.Nil(err)
-
-// 	err = queue.Add(ctx, u1)
-// 	require.NotNil(err)
-
-// 	err = queue.Add(ctx, u2)
-// 	require.NotNil(err)
-
-// 	// .GetAll
-// 	containsFunc := func(user model.QueuedUser) func(e *model.QueuedUser) bool {
-// 		return func(e *model.QueuedUser) bool {
-// 			return *e == user
-// 		}
-// 	}
-// 	haveAll, err := queue.GetAll(ctx)
-// 	require.Nil(err)
-// 	require.Equal(2, len(haveAll))
-// 	require.True(slices.ContainsFunc(haveAll, containsFunc(u1)))
-// 	require.True(slices.ContainsFunc(haveAll, containsFunc(u2)))
-
-// 	// .Remove (and re-.Add)
-// 	err = queue.Remove(ctx, []string{u2.Name})
-// 	require.Nil(err)
-
-// 	haveAll, err = queue.GetAll(ctx)
-// 	require.Nil(err)
-// 	require.Equal(1, len(haveAll))
-// 	require.True(*haveAll[0] == u1)
-
-// 	err = queue.Add(ctx, u2)
-// 	require.Nil(err)
-
-// 	err = queue.Remove(ctx, []string{u1.Name, u2.Name})
-// 	require.Nil(err)
-
-// 	haveAll, err = queue.GetAll(ctx)
-// 	require.Nil(err)
-// 	require.Zero(len(haveAll))
-// }
+	bin, err = users.GetBins(ctx, model.BinIdx{0, 0}, model.BinIdx{1, 1}, 350*time.Second)
+	require.Nil(err)
+	require.Len(bin, 7)
+	require.True(binContains(bin, wantUsers[3]))
+	require.True(binContains(bin, wantUsers[4]))
+	require.True(binContains(bin, wantUsers[5]))
+	require.True(binContains(bin, wantUsers[6]))
+	require.True(binContains(bin, wantUsers[7]))
+	require.True(binContains(bin, wantUsers[8]))
+	require.True(binContains(bin, wantUsers[9]))
+}
 
 func testUserQueueParse(t *testing.T, factory func(model.GridConfig) model.UserQueue) {
 	require := require.New(t)

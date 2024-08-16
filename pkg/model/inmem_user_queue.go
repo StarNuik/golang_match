@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/starnuik/golang_match/pkg/schema"
 )
@@ -55,6 +56,33 @@ func (m *inmemoryUserQueue) GetBin(_ context.Context, idx BinIdx) ([]*QueuedUser
 	slice := make([]*QueuedUser, 0, len(bin))
 	for _, user := range bin {
 		slice = append(slice, user)
+	}
+
+	return slice, nil
+}
+
+func (m *inmemoryUserQueue) GetBins(ctx context.Context, lo BinIdx, hi BinIdx, minWait time.Duration) ([]*QueuedUser, error) {
+	bins := []map[string]*QueuedUser{}
+	for s := lo.S; s <= hi.S; s++ {
+		for l := lo.L; l <= hi.L; l++ {
+			idx := BinIdx{S: s, L: l}
+			if bin, exists := m.bins[idx]; exists {
+				bins = append(bins, bin)
+			}
+		}
+	}
+
+	// todo: this might not be a great idea
+	// todo: different func calls will have different now-s
+	now := time.Now().UTC()
+
+	slice := []*QueuedUser{}
+	for _, bin := range bins {
+		for _, user := range bin {
+			if now.Sub(user.QueuedAt) >= minWait {
+				slice = append(slice, user)
+			}
+		}
 	}
 
 	return slice, nil

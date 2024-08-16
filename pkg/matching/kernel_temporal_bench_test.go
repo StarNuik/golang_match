@@ -12,7 +12,8 @@ import (
 )
 
 func TestKernelTemporal(t *testing.T) {
-	rangeOver([]int{4, 8, 16}, []int{10, 50, 100, 250, 500, 1000}, func(usersPerTick, matchSize int) {
+	// ow is ~75 ups
+	rangeOver([]int{4, 8, 16}, []int{5, 10, 25, 50, 75}, func(usersPerTick, matchSize int) {
 		require := require.New(t)
 
 		ctx := context.Background()
@@ -25,6 +26,8 @@ func TestKernelTemporal(t *testing.T) {
 		kcfg := matching.KernelConfig{
 			MatchSize: matchSize,
 			GridSide:  gridSide,
+			WaitTime1: 15 * time.Second,
+			WaitTime2: 30 * time.Second,
 		}
 		ticks := 900 // 15 minutes with 1 tps
 

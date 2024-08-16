@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"testing"
+	"time"
 
 	"github.com/starnuik/golang_match/pkg/matching"
 	"github.com/starnuik/golang_match/pkg/model"
@@ -26,6 +27,8 @@ func BenchmarkKernel(b *testing.B) {
 		kcfg := matching.KernelConfig{
 			MatchSize: matchSize,
 			GridSide:  gridSide,
+			WaitTime1: 15 * time.Second,
+			WaitTime2: 30 * time.Second,
 		}
 		label := fmt.Sprintf("_matchSize(%3d)_userbase(%6d)", matchSize, datasetSize)
 

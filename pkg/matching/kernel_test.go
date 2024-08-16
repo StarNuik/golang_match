@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/starnuik/golang_match/pkg/matching"
 	"github.com/starnuik/golang_match/pkg/model"
@@ -25,6 +26,8 @@ func TestKernelBasic(t *testing.T) {
 	kcfg := matching.KernelConfig{
 		MatchSize: matchSize,
 		GridSide:  gridSide,
+		WaitTime1: 15 * time.Second,
+		WaitTime2: 30 * time.Second,
 	}
 
 	dataset := newDataset(gcfg, datasetSize)

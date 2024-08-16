@@ -30,6 +30,7 @@ type UserQueue interface {
 	Parse(*schema.QueueUserRequest) (*QueuedUser, error)
 	Add(context.Context, *QueuedUser) error
 	GetBin(context.Context, BinIdx) ([]*QueuedUser, error)
+	GetBins(ctx context.Context, lo BinIdx, hi BinIdx, minWait time.Duration) ([]*QueuedUser, error)
 	Remove(context.Context, []string) error
 	Count(context.Context) (int, error)
 }

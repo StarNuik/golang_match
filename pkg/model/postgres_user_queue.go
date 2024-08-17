@@ -39,7 +39,7 @@ func (m *pgUserQueue) Add(ctx context.Context, user *QueuedUser) error {
 		log.Printf("tag != INSERT, tag(%s)\n", tag.String())
 	}
 	if tag.RowsAffected() != 1 {
-		log.Printf("tag rows != 1, tag(%s)\n", tag.String())
+		log.Printf("rowsAffected != 1, tag(%s)\n", tag.String())
 	}
 
 	return nil
@@ -114,7 +114,7 @@ func (m *pgUserQueue) Remove(ctx context.Context, users []string) error {
 		log.Printf("tag != DELETE, tag(%s)\n", tag.String())
 	}
 	if tag.RowsAffected() != int64(len(users)) {
-		log.Printf("tag rows != len(toRemove), tag(%s), len(%d)\n", tag.String(), len(users))
+		log.Printf("rowsAffected != len(toRemove), tag(%s), len(%d)\n", tag.String(), len(users))
 	}
 	return nil
 }

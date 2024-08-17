@@ -26,10 +26,7 @@ func (k *priorityKernel) Match(ctx context.Context, users model.UserQueue) ([]sc
 	if err != nil {
 		return nil, err
 	}
-	err = cleanMatches(ctx, users, some, k.MatchSize)
-	if err != nil {
-		return nil, err
-	}
+
 	matches = append(matches, some...)
 
 	return matches, nil
@@ -63,13 +60,36 @@ func (k *priorityKernel) passX(ctx context.Context, users model.UserQueue, kerne
 			continue
 		}
 
-		bin = append(bin, priorityBin...)
+		bin = combineBins(bin, priorityBin)
 		slices.SortFunc(bin, func(l *model.QueuedUser, r *model.QueuedUser) int {
 			return l.QueuedAt.Compare(r.QueuedAt)
 		})
-		matches = append(matches, matchBin(bin, blockSize)...)
+
+		some := matchBin(bin, blockSize)
+		err = cleanMatches(ctx, users, some, k.MatchSize)
+		if err != nil {
+			return nil, err
+		}
+
+		matches = append(matches, some...)
 	}
 	return matches, nil
+}
+
+func combineBins(left []*model.QueuedUser, right []*model.QueuedUser) []*model.QueuedUser {
+	unique := make(map[string]*model.QueuedUser)
+	for _, user := range left {
+		unique[user.Name] = user
+	}
+	for _, user := range right {
+		unique[user.Name] = user
+	}
+
+	slice := make([]*model.QueuedUser, 0, len(unique))
+	for _, user := range unique {
+		slice = append(slice, user)
+	}
+	return slice
 }
 
 func cleanMatches(ctx context.Context, users model.UserQueue, matches []schema.MatchResponse, matchSize int) error {

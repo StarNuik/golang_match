@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/starnuik/golang_match/pkg/matching"
 	"github.com/starnuik/golang_match/pkg/model"
 	"github.com/starnuik/golang_match/pkg/schema"
@@ -22,26 +23,51 @@ func rangeOver(matchSizes []int, userSizes []int, call func(datasetSize int, mat
 	}
 }
 
-func rangeKernels(run func(string, func(matching.KernelConfig) matching.Kernel)) {
+type factoryModel func(cfg model.GridConfig) model.UserQueue
+type factoryKernel func(matching.KernelConfig) matching.Kernel
+
+func rangeKernels(dbUrl string, run func(string, factoryModel, factoryKernel)) {
 	kt := []struct {
-		factory func(matching.KernelConfig) matching.Kernel
-		label   string
+		factoryKernel factoryKernel
+		label         string
 	}{
 		{
-			factory: func(cfg matching.KernelConfig) matching.Kernel {
+			factoryKernel: func(cfg matching.KernelConfig) matching.Kernel {
 				return matching.NewBasicKernel(cfg)
 			},
-			label: "basic_kernel",
+			label: "basic",
 		},
 		{
-			factory: func(cfg matching.KernelConfig) matching.Kernel {
+			factoryKernel: func(cfg matching.KernelConfig) matching.Kernel {
 				return matching.NewPriorityKernel(cfg)
 			},
-			label: "priority_kernel",
+			label: "priority",
+		},
+	}
+	mt := []struct {
+		factoryUsers factoryModel
+		label        string
+	}{
+		{
+			factoryUsers: func(cfg model.GridConfig) model.UserQueue {
+				return model.NewUserQueueInmemory(cfg)
+			},
+			label: "inmem",
+		},
+		{
+			factoryUsers: func(cfg model.GridConfig) model.UserQueue {
+				db, _ := pgxpool.New(context.Background(), dbUrl)
+				db.Exec(context.Background(), `delete from UserQueue`)
+				// can't `defer db.Close()`
+				return model.NewUserQueuePostgres(cfg, db)
+			},
+			label: "postgres",
 		},
 	}
 	for _, k := range kt {
-		run(k.label, k.factory)
+		for _, m := range mt {
+			run(fmt.Sprintf("%s_%s", k.label, m.label), m.factoryUsers, k.factoryKernel)
+		}
 	}
 }
 
@@ -51,9 +77,9 @@ type dataset struct {
 	dict  map[string]*model.QueuedUser
 }
 
-func newDataset(cfg model.GridConfig, size int) *dataset {
+func newDataset(factory factoryModel, cfg model.GridConfig, size int) *dataset {
 	out := &dataset{
-		model: model.NewUserQueueInmemory(cfg),
+		model: factory(cfg),
 		dict:  make(map[string]*model.QueuedUser),
 	}
 

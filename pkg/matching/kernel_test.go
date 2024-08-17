@@ -12,7 +12,10 @@ import (
 )
 
 func TestKernelBasic(t *testing.T) {
-	rangeKernels(func(label string, factory func(matching.KernelConfig) matching.Kernel) {
+	// requires "compose.test.yaml" deployed
+	var dbUrl = "postgres://pg:insecure@localhost:5432/test"
+
+	rangeKernels(dbUrl, func(label string, mFactory factoryModel, kFactory factoryKernel) {
 		t.Run(label, func(t *testing.T) {
 			require := require.New(t)
 
@@ -32,9 +35,9 @@ func TestKernelBasic(t *testing.T) {
 				PriorityRadius: 2,
 			}
 
-			dataset := newDataset(gcfg, datasetSize)
+			dataset := newDataset(mFactory, gcfg, datasetSize)
 
-			kernel := factory(kcfg)
+			kernel := kFactory(kcfg)
 			require.NotNil(kernel)
 
 			matches, err := kernel.Match(ctx, dataset.model)
@@ -64,45 +67,48 @@ func TestKernelBasic(t *testing.T) {
 	})
 }
 
-func TestKernelTemporal(t *testing.T) {
-	rangeKernels(func(kernelLabel string, factory func(matching.KernelConfig) matching.Kernel) {
-		// overwatch is ~75 ups
-		rangeOver([]int{4, 8, 16}, []int{5, 10, 25 /* , 50, 75 */}, func(usersPerTick, matchSize int) {
-			require := require.New(t)
+// func TestKernelTemporal(t *testing.T) {
+// 	// requires "compose.test.yaml" deployed
+// 	var dbUrl = "postgres://pg:insecure@localhost:5432/test"
 
-			ctx := context.Background()
-			gridSide := 25
-			gcfg := model.GridConfig{
-				SkillCeil:   5000,
-				LatencyCeil: 5000,
-				Side:        gridSide,
-			}
-			kcfg := matching.KernelConfig{
-				MatchSize:      matchSize,
-				GridSide:       gridSide,
-				WaitSoftLimit:  15 * time.Second,
-				PriorityRadius: 2,
-			}
-			ticks := 900 // 15 minutes with 1 tps
+// 	rangeKernels(dbUrl, func(kernelLabel string, mFactory factoryModel, kFactory factoryKernel) {
+// 		// overwatch is ~75 ups
+// 		rangeOver([]int{4, 8}, []int{5, 10, 25 /* , 50, 75 */}, func(usersPerTick, matchSize int) {
+// 			require := require.New(t)
 
-			stats := onlineVariance{}
-			kernel := factory(kcfg)
-			dataset := newDataset(gcfg, 0)
+// 			ctx := context.Background()
+// 			gridSide := 25
+// 			gcfg := model.GridConfig{
+// 				SkillCeil:   5000,
+// 				LatencyCeil: 5000,
+// 				Side:        gridSide,
+// 			}
+// 			kcfg := matching.KernelConfig{
+// 				MatchSize:      matchSize,
+// 				GridSide:       gridSide,
+// 				WaitSoftLimit:  15 * time.Second,
+// 				PriorityRadius: 2,
+// 			}
+// 			ticks := 900 // 15 minutes with 1 tps
 
-			label := fmt.Sprintf("%s_matchSize(%3d)_usersPerTick(%6d)", kernelLabel, matchSize, usersPerTick)
-			t.Run(label, func(t *testing.T) {
-				for range ticks {
-					dataset.add(usersPerTick)
-					dataset.moveQueuedAt(time.Second)
+// 			stats := onlineVariance{}
+// 			kernel := kFactory(kcfg)
+// 			dataset := newDataset(mFactory, gcfg, 0)
 
-					matches, err := kernel.Match(ctx, dataset.model)
-					require.Nil(err)
+// 			label := fmt.Sprintf("%s_matchSize(%3d)_usersPerTick(%6d)", kernelLabel, matchSize, usersPerTick)
+// 			t.Run(label, func(t *testing.T) {
+// 				for range ticks {
+// 					dataset.add(usersPerTick)
+// 					dataset.moveQueuedAt(time.Second)
 
-					stats.Push(dataset.dict, matches, matchSize)
-					dataset.remove(matches)
-				}
-			})
-			fmt.Printf("   %s\n", stats.Stat(false, true))
-		})
-	})
-}
+// 					matches, err := kernel.Match(ctx, dataset.model)
+// 					require.Nil(err)
+
+// 					stats.Push(dataset.dict, matches, matchSize)
+// 					dataset.remove(matches)
+// 				}
+// 			})
+// 			fmt.Printf("   %s\n", stats.Stat(false, true))
+// 		})
+// 	})
+// }

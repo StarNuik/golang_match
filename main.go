@@ -57,7 +57,7 @@ func matchUsers() {
 		return // no db connection anyway
 	}
 
-	fmt.Printf("%d users queued\n", count)
+	log.Printf("%d users queued\n", count)
 
 	matches, err := kernel.Match(context.TODO(), userQueue)
 	if err != nil {
@@ -68,7 +68,7 @@ func matchUsers() {
 		return
 	}
 
-	fmt.Printf("matched %d teams\n", len(matches))
+	log.Printf("matched %d teams\n", len(matches))
 	for _, resp := range matches {
 		finalizeTeam(resp)
 	}
@@ -81,7 +81,7 @@ func finalizeTeam(resp schema.MatchResponse) {
 		return
 	}
 
-	packed, err := json.Marshal(resp)
+	packed, err := json.MarshalIndent(resp, "", " ")
 	if err != nil {
 		log.Println(err)
 		return
@@ -170,7 +170,9 @@ func main() {
 	userQueue = model.NewUserQueueInmemory(gridCfg)
 	kernel = setupMatching(gridCfg.Side)
 
-	r := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
 
 	r.POST("/api/users", queueUser)
 

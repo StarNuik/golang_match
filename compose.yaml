@@ -1,0 +1,10 @@
+version: "3"
+
+services:
+  service-match:
+    build: .
+  service-fake-load:
+    build: ./cmd/fake_load
+    environment:
+      USERS_PER_SECOND: 10
+      ENDPOINT_URL: http://service-match:8080/api/users

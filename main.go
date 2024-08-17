@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/starnuik/golang_match/pkg/matching"
 	"github.com/starnuik/golang_match/pkg/model"
@@ -102,10 +103,7 @@ func matchUsersLoop() {
 	}
 }
 
-func setupEnv() model.GridConfig {
-	tickMs := atoiEnv("TICK_MS")
-	matchingTickRate = time.Duration(tickMs) * time.Millisecond
-
+func setupUserQueue(gridSide int) (model.UserQueue, func()) {
 	skillCeil := atoiEnv("TUNING_SKILL_CEIL")
 	if skillCeil <= 0 {
 		log.Panicln("TUNING_SKILL_CEIL must be > 0")
@@ -115,16 +113,34 @@ func setupEnv() model.GridConfig {
 		log.Panicln("TUNING_LATENCY_CEIL must be > 0")
 	}
 
-	gridSide := atoiEnv("TUNING_GRID_SIDE")
-	if gridSide <= 0 {
-		log.Panicln("TUNING_GRID_SIDE must be > 0")
-	}
-
-	return model.GridConfig{
+	cfg := model.GridConfig{
 		SkillCeil:   float64(skillCeil),
 		LatencyCeil: float64(latencyCeil),
 		Side:        gridSide,
 	}
+
+	storageType := os.Getenv("STORAGE_TYPE")
+	switch storageType {
+	case "inmem":
+		return model.NewUserQueueInmemory(cfg), func() {}
+	case "postgres":
+		dbUrl := os.Getenv("DB_URL")
+
+		db, err := pgxpool.New(context.Background(), dbUrl)
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		err = db.Ping(context.Background())
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		return model.NewUserQueuePostgres(cfg, db), db.Close
+	default:
+		log.Panicln("STORAGE_TYPE is invalid")
+	}
+	panic("unreachable")
 }
 
 func setupMatching(gridSide int) matching.Kernel {
@@ -133,27 +149,28 @@ func setupMatching(gridSide int) matching.Kernel {
 		log.Panicln("MATCH_SIZE must be >= 2")
 	}
 
-	priorityRadius := atoiEnv("TUNING_PRIORITY_RADIUS")
-	if priorityRadius < 1 {
-		log.Panicln("TUNING_PRIORITY_RADIUS must be >= 1")
-	}
-
-	waitLimitMs := atoiEnv("TUNING_WAIT_SOFT_LIMIT_MS")
-	waitLimit := time.Duration(waitLimitMs) * time.Millisecond
-
 	kernelType := os.Getenv("MATCHING_TYPE")
 
 	cfg := matching.KernelConfig{
-		MatchSize:      matchSize,
-		GridSide:       gridSide,
-		PriorityRadius: priorityRadius,
-		WaitSoftLimit:  waitLimit,
+		MatchSize: matchSize,
+		GridSide:  gridSide,
 	}
 
 	switch kernelType {
 	case "basic":
 		return matching.NewBasicKernel(cfg)
 	case "priority":
+		priorityRadius := atoiEnv("TUNING_PRIORITY_RADIUS")
+		if priorityRadius < 1 {
+			log.Panicln("TUNING_PRIORITY_RADIUS must be >= 1")
+		}
+
+		waitLimitMs := atoiEnv("TUNING_WAIT_SOFT_LIMIT_MS")
+		waitLimit := time.Duration(waitLimitMs) * time.Millisecond
+
+		cfg.PriorityRadius = priorityRadius
+		cfg.WaitSoftLimit = waitLimit
+
 		return matching.NewBasicKernel(cfg)
 	default:
 		log.Panicln("MATCHING_TYPE is invalid")
@@ -170,10 +187,17 @@ func atoiEnv(key string) int {
 }
 
 func main() {
-	gridCfg := setupEnv()
+	tickMs := atoiEnv("TICK_MS")
+	matchingTickRate = time.Duration(tickMs) * time.Millisecond
+	gridSide := atoiEnv("TUNING_GRID_SIDE")
+	if gridSide <= 0 {
+		log.Panicln("TUNING_GRID_SIDE must be > 0")
+	}
 
-	userQueue = model.NewUserQueueInmemory(gridCfg)
-	kernel = setupMatching(gridCfg.Side)
+	var closeDb func()
+	userQueue, closeDb = setupUserQueue(gridSide)
+	defer closeDb()
+	kernel = setupMatching(gridSide)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()

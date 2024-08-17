@@ -1,0 +1,46 @@
+version: "3"
+
+networks:
+  internal:
+
+services:
+  postgres:
+    image: postgres:latest
+    restart: unless-stopped
+    networks:
+    - internal
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: insecure_password
+      POSTGRES_DB: release
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+  pgmigrate:
+    image: ghcr.io/peterldowns/pgmigrate:latest
+    command: pgmigrate migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - internal
+    volumes:
+    - ./migrations:/migrations
+    environment:
+      PGM_MIGRATIONS: /migrations
+      PGM_DATABASE: postgres://user:insecure_password@postgres:5432/release
+  service-match:
+    build: .
+    restart: unless-stopped
+    env_file: ./.env
+    ports:
+    - 80:8080
+    networks:
+    - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: postgres://user:insecure_password@postgres:5432/release

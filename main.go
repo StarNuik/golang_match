@@ -69,25 +69,30 @@ func matchUsers() {
 	}
 
 	log.Printf("matched %d teams\n", len(matches))
-	for _, resp := range matches {
-		finalizeTeam(resp)
-	}
+	finalizeTeams(matches)
 }
 
-func finalizeTeam(resp schema.MatchResponse) {
-	err := userQueue.Remove(context.TODO(), resp.Names)
+func finalizeTeams(matches []schema.MatchResponse) {
+	matchedUsers := []string{}
+	for _, match := range matches {
+		matchedUsers = append(matchedUsers, match.Names...)
+	}
+
+	err := userQueue.Remove(context.TODO(), matchedUsers)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	packed, err := json.MarshalIndent(resp, "", " ")
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	for _, resp := range matches {
+		packed, err := json.MarshalIndent(resp, "", " ")
+		if err != nil {
+			log.Println(err)
+			return
+		}
 
-	fmt.Println(string(packed))
+		fmt.Println(string(packed))
+	}
 }
 
 func matchUsersLoop() {

@@ -29,7 +29,7 @@ func BenchmarkKernel(b *testing.B) {
 				Side:        gridSide,
 			}
 			kcfg := matching.KernelConfig{
-				MatchSize:      25,
+				MatchSize:      matchSize,
 				GridSide:       gridSide,
 				WaitSoftLimit:  15 * time.Second,
 				PriorityRadius: 2,

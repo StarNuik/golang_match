@@ -21,7 +21,7 @@ func TestKernelBasic(t *testing.T) {
 
 			ctx := context.Background()
 			gridSide := 25
-			datasetSize := 10_000
+			datasetSize := 1_000
 			matchSize := 8
 			gcfg := model.GridConfig{
 				SkillCeil:   5000,

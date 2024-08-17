@@ -8,7 +8,7 @@ git clone https://github.com/starnuik/golang_match.git
 cd golang_match
 docker-compose -f compose.test.yaml pull
 docker-compose -f compose.test.yaml up (-d)
-go test ./... -v -count 1
+go test ./... -v -count 1 -p 1
 ```
 
 ## Deployment

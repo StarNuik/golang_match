@@ -35,7 +35,6 @@ var (
 	}
 )
 
-// todo: should i look into subtests?
 func TestUserQueueAdd(t *testing.T) {
 	rangeUserQueue(t, func(t *testing.T, factory factoryUserQueue) {
 		require := require.New(t)
@@ -93,10 +92,14 @@ func TestUserQueueGet(t *testing.T) {
 		require.True(binContains(bin, wantUsers[9]))
 	})
 }
-func TestInmemUserQueueCount(t *testing.T) {
+func TestUserQueueCount(t *testing.T) {
 	rangeUserQueue(t, func(t *testing.T, factory factoryUserQueue) {
 		require := require.New(t)
 		users := factory(cfg)
+
+		count, err := users.Count(ctx)
+		require.Nil(err)
+		require.Equal(0, count)
 
 		for idx, user := range wantUsers {
 			err := users.Add(ctx, user)
@@ -110,7 +113,7 @@ func TestInmemUserQueueCount(t *testing.T) {
 	})
 }
 
-func TestInmemUserQueueParse(t *testing.T) {
+func TestUserQueueParse(t *testing.T) {
 	rangeUserQueue(t, func(t *testing.T, factory factoryUserQueue) {
 		require := require.New(t)
 		users := factory(model.GridConfig{})
@@ -146,7 +149,7 @@ func TestInmemUserQueueParse(t *testing.T) {
 	})
 }
 
-func TestInmemUserQueueRemove(t *testing.T) {
+func TestUserQueueRemove(t *testing.T) {
 	rangeUserQueue(t, func(t *testing.T, factory factoryUserQueue) {
 		require := require.New(t)
 		users := factory(cfg)
@@ -185,7 +188,7 @@ func TestInmemUserQueueRemove(t *testing.T) {
 	})
 }
 
-func TestInmemUserQueueGetBins(t *testing.T) {
+func TestUserQueueGetBins(t *testing.T) {
 	rangeUserQueue(t, func(t *testing.T, factory factoryUserQueue) {
 		require := require.New(t)
 		users := factory(cfg)
@@ -217,6 +220,30 @@ func TestInmemUserQueueGetBins(t *testing.T) {
 }
 
 type factoryUserQueue func(cfg model.GridConfig) model.UserQueue
+
+// type iterUserQueue struct {
+// 	label string
+// 	factory func(cfg model.GridConfig) model.UserQueue
+// 	close func()
+// }
+
+// func iterUserQueues() []iterUserQueue {
+// 	return []iterUserQueue{
+// 		{
+// 			"inmem", func(cfg model.GridConfig) model.UserQueue {
+// 				return model.NewUserQueueInmemory(cfg)
+// 			}, func() {},
+// 		},
+// 		{
+// 			"postgres", func(cfg model.GridConfig) model.UserQueue {
+// 				db, _ := pgxpool.New(context.Background(), dbUrl)
+// 				db.Exec(context.Background(), `delete from UserQueue`)
+// 				// can't `defer db.Close()`
+// 				return model.NewUserQueuePostgres(cfg, db)
+// 			},
+// 		}
+// 	}
+// }
 
 func rangeUserQueue(t *testing.T, run func(*testing.T, factoryUserQueue)) {
 	table := []struct {

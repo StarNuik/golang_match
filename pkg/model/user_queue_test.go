@@ -198,7 +198,7 @@ func TestUserQueueGetBins(t *testing.T) {
 			require.Nil(err)
 		}
 
-		bin, err := users.GetBins(ctx, model.BinIdx{0, 0}, model.BinIdx{1, 0}, 350*time.Second)
+		bin, err := users.GetRect(ctx, model.BinIdx{0, 0}, model.BinIdx{1, 0}, 350*time.Second)
 		require.Nil(err)
 		require.Len(bin, 4)
 		require.True(binContains(bin, wantUsers[3]))
@@ -206,7 +206,7 @@ func TestUserQueueGetBins(t *testing.T) {
 		require.True(binContains(bin, wantUsers[5]))
 		require.True(binContains(bin, wantUsers[6]))
 
-		bin, err = users.GetBins(ctx, model.BinIdx{0, 0}, model.BinIdx{1, 1}, 350*time.Second)
+		bin, err = users.GetRect(ctx, model.BinIdx{0, 0}, model.BinIdx{1, 1}, 350*time.Second)
 		require.Nil(err)
 		require.Len(bin, 7)
 		require.True(binContains(bin, wantUsers[3]))
@@ -220,30 +220,6 @@ func TestUserQueueGetBins(t *testing.T) {
 }
 
 type factoryUserQueue func(cfg model.GridConfig) model.UserQueue
-
-// type iterUserQueue struct {
-// 	label string
-// 	factory func(cfg model.GridConfig) model.UserQueue
-// 	close func()
-// }
-
-// func iterUserQueues() []iterUserQueue {
-// 	return []iterUserQueue{
-// 		{
-// 			"inmem", func(cfg model.GridConfig) model.UserQueue {
-// 				return model.NewUserQueueInmemory(cfg)
-// 			}, func() {},
-// 		},
-// 		{
-// 			"postgres", func(cfg model.GridConfig) model.UserQueue {
-// 				db, _ := pgxpool.New(context.Background(), dbUrl)
-// 				db.Exec(context.Background(), `delete from UserQueue`)
-// 				// can't `defer db.Close()`
-// 				return model.NewUserQueuePostgres(cfg, db)
-// 			},
-// 		}
-// 	}
-// }
 
 func rangeUserQueue(t *testing.T, run func(*testing.T, factoryUserQueue)) {
 	table := []struct {

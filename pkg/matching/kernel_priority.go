@@ -44,7 +44,7 @@ func (k *priorityKernel) passX(ctx context.Context, users model.UserQueue, kerne
 			L: idx.L + kernelSize,
 		}
 
-		priorityBin, err := users.GetBins(ctx, lo, hi, minWait)
+		priorityBin, err := users.GetRect(ctx, lo, hi, minWait)
 		if err != nil {
 			return nil, err
 		}

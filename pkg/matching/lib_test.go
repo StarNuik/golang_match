@@ -15,47 +15,43 @@ import (
 	"github.com/starnuik/golang_match/pkg/schema"
 )
 
-func rangeOver(matchSizes []int, userSizes []int, call func(datasetSize int, matchSize int)) {
-	for _, uSize := range userSizes {
-		for _, mSize := range matchSizes {
-			call(uSize, mSize)
-		}
-	}
+type factoryKernel struct {
+	label string
+	build func(matching.KernelConfig) matching.Kernel
 }
 
-type factoryModel func(cfg model.GridConfig) model.UserQueue
-type factoryKernel func(matching.KernelConfig) matching.Kernel
-
-func rangeKernels(dbUrl string, run func(string, factoryModel, factoryKernel)) {
-	kt := []struct {
-		factoryKernel factoryKernel
-		label         string
-	}{
+func overKernels() []factoryKernel {
+	return []factoryKernel{
 		{
-			factoryKernel: func(cfg matching.KernelConfig) matching.Kernel {
+			build: func(cfg matching.KernelConfig) matching.Kernel {
 				return matching.NewBasicKernel(cfg)
 			},
 			label: "basic",
 		},
 		{
-			factoryKernel: func(cfg matching.KernelConfig) matching.Kernel {
+			build: func(cfg matching.KernelConfig) matching.Kernel {
 				return matching.NewPriorityKernel(cfg)
 			},
 			label: "priority",
 		},
 	}
-	mt := []struct {
-		factoryUsers factoryModel
-		label        string
-	}{
+}
+
+type factoryModel struct {
+	label string
+	build func(model.GridConfig) model.UserQueue
+}
+
+func overModels(dbUrl string) []factoryModel {
+	return []factoryModel{
 		{
-			factoryUsers: func(cfg model.GridConfig) model.UserQueue {
+			build: func(cfg model.GridConfig) model.UserQueue {
 				return model.NewUserQueueInmemory(cfg)
 			},
 			label: "inmem",
 		},
 		{
-			factoryUsers: func(cfg model.GridConfig) model.UserQueue {
+			build: func(cfg model.GridConfig) model.UserQueue {
 				db, _ := pgxpool.New(context.Background(), dbUrl)
 				db.Exec(context.Background(), `delete from UserQueue`)
 				// can't `defer db.Close()`
@@ -63,11 +59,6 @@ func rangeKernels(dbUrl string, run func(string, factoryModel, factoryKernel)) {
 			},
 			label: "postgres",
 		},
-	}
-	for _, k := range kt {
-		for _, m := range mt {
-			run(fmt.Sprintf("%s_%s", k.label, m.label), m.factoryUsers, k.factoryKernel)
-		}
 	}
 }
 
@@ -79,7 +70,7 @@ type dataset struct {
 
 func newDataset(factory factoryModel, cfg model.GridConfig, size int) *dataset {
 	out := &dataset{
-		model: factory(cfg),
+		model: factory.build(cfg),
 		dict:  make(map[string]*model.QueuedUser),
 	}
 

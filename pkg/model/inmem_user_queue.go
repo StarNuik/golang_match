@@ -57,7 +57,7 @@ func (m *inmemoryUserQueue) GetBin(_ context.Context, idx BinIdx) ([]*QueuedUser
 	return slice, nil
 }
 
-func (m *inmemoryUserQueue) GetBins(ctx context.Context, lo BinIdx, hi BinIdx, minWait time.Duration) ([]*QueuedUser, error) {
+func (m *inmemoryUserQueue) GetRect(ctx context.Context, lo BinIdx, hi BinIdx, minWait time.Duration) ([]*QueuedUser, error) {
 	bins := []map[string]*QueuedUser{}
 	for s := lo.S; s <= hi.S; s++ {
 		for l := lo.L; l <= hi.L; l++ {

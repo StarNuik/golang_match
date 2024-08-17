@@ -69,7 +69,7 @@ func (m *pgUserQueue) GetBin(ctx context.Context, idx BinIdx) ([]*QueuedUser, er
 	return bin, nil
 }
 
-func (m *pgUserQueue) GetBins(ctx context.Context, lo BinIdx, hi BinIdx, minWait time.Duration) ([]*QueuedUser, error) {
+func (m *pgUserQueue) GetRect(ctx context.Context, lo BinIdx, hi BinIdx, minWait time.Duration) ([]*QueuedUser, error) {
 	// todo: this might not be a great idea
 	// todo: different func calls will have different now-s
 	now := time.Now().UTC()

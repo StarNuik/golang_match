@@ -1,0 +1,27 @@
+version: "3"
+
+services:
+  postgres:
+    image: postgres:latest
+    ports:
+    - 5432:5432
+    environment:
+      POSTGRES_USER: pg
+      POSTGRES_PASSWORD: insecure
+      POSTGRES_DB: test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 1s
+      timeout: 5s
+      retries: 60
+  pgmigrate:
+    image: ghcr.io/peterldowns/pgmigrate:latest
+    command: pgmigrate migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+    - ./migrations:/migrations
+    environment:
+      PGM_MIGRATIONS: /migrations
+      PGM_DATABASE: postgres://pg:insecure@postgres:5432/test

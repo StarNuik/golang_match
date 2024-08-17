@@ -49,10 +49,6 @@ func (m *inmemoryUserQueue) GetBin(_ context.Context, idx BinIdx) ([]*QueuedUser
 
 	bin := m.bins[idx]
 
-	if len(bin) == 0 {
-		return nil, nil
-	}
-
 	slice := make([]*QueuedUser, 0, len(bin))
 	for _, user := range bin {
 		slice = append(slice, user)

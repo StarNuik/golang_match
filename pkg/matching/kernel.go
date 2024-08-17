@@ -49,19 +49,6 @@ func matchBin(bin []*model.QueuedUser, blockSize int) []schema.MatchResponse {
 	return matches
 }
 
-func cleanMatches(ctx context.Context, users model.UserQueue, matches []schema.MatchResponse, matchSize int) error {
-	matchedUsers := make([]string, 0, len(matches)*matchSize)
-	for _, match := range matches {
-		matchedUsers = append(matchedUsers, match.Names...)
-	}
-
-	err := users.Remove(ctx, matchedUsers)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func fillResponse(match []*model.QueuedUser) schema.MatchResponse {
 	resp := schema.MatchResponse{}
 	resp.Skill.Min = math.MaxFloat64

@@ -24,10 +24,6 @@ func (k *basicKernel) Match(ctx context.Context, users model.UserQueue) ([]schem
 	if err != nil {
 		return nil, err
 	}
-	err = cleanMatches(ctx, users, some, k.MatchSize)
-	if err != nil {
-		return nil, err
-	}
 	matches = append(matches, some...)
 
 	return matches, nil

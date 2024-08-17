@@ -52,3 +52,10 @@ func parse(req *schema.QueueUserRequest) (*QueuedUser, error) {
 		QueuedAt: time.Now().UTC(),
 	}, nil
 }
+
+func toIndex(req *QueuedUser, cfg *GridConfig) BinIdx {
+	return BinIdx{
+		S: remap(req.Skill, cfg.SkillCeil, cfg.Side),
+		L: remap(req.Latency, cfg.LatencyCeil, cfg.Side),
+	}
+}
